@@ -25,9 +25,13 @@ class GuessResult(Enum):
 
 
 class Wordle:
-    # 颜色常量（类变量，所有实例共享）
+    # 默认配色（绿 / 黄 / 灰）
     CORRECT_COLOR: ClassVar[tuple[int, int, int]] = (134, 163, 115)
     EXIST_COLOR: ClassVar[tuple[int, int, int]] = (198, 182, 109)
+    # 每日模式配色（青 / 蓝 / 灰）
+    DAILY_CORRECT_COLOR: ClassVar[tuple[int, int, int]] = (91, 173, 186)
+    DAILY_EXIST_COLOR: ClassVar[tuple[int, int, int]] = (97, 117, 178)
+
     WRONG_COLOR: ClassVar[tuple[int, int, int]] = (123, 123, 124)
     BORDER_COLOR: ClassVar[tuple[int, int, int]] = (123, 123, 124)
     BG_COLOR: ClassVar[tuple[int, int, int]] = (255, 255, 255)
@@ -40,7 +44,7 @@ class Wordle:
     FONT_SIZE: ClassVar[int] = 20
     FONT_NAME: ClassVar[str] = "KarnakPro-Bold.ttf"
 
-    def __init__(self, word: str, meaning: str):
+    def __init__(self, word: str, meaning: str, *, daily: bool = False):
         self.word = word
         self.meaning = meaning
         self.word_lower = word.lower()
@@ -48,6 +52,13 @@ class Wordle:
         self.rows = self.length + 1  # 可猜次数
         self.guessed_words: list[str] = []
         self.result = f"【单词】：{self.word}\n【释义】：{self.meaning or '（暂无）'}"
+
+        if daily:
+            self.correct_color = self.DAILY_CORRECT_COLOR
+            self.exist_color = self.DAILY_EXIST_COLOR
+        else:
+            self.correct_color = self.CORRECT_COLOR
+            self.exist_color = self.EXIST_COLOR
 
         self.font = _get_font()
 
@@ -111,11 +122,11 @@ class Wordle:
                 for i in range(self.length):
                     letter = guessed_word[i]
                     if letter == self.word_lower[i]:
-                        color = self.CORRECT_COLOR
+                        color = self.correct_color
                     elif letter in remaining_letters:
                         # 消耗掉一个未匹配的字母，防止重复标记黄色
                         remaining_letters[remaining_letters.index(letter)] = "_"
-                        color = self.EXIST_COLOR
+                        color = self.exist_color
                     else:
                         color = self.WRONG_COLOR
                     blocks.append(self._draw_block(color, letter))
@@ -151,7 +162,7 @@ class Wordle:
 
         for i, ch in enumerate(hint):
             letter = "" if ch == "*" else ch
-            color = self.CORRECT_COLOR if letter else self.BG_COLOR
+            color = self.correct_color if letter else self.BG_COLOR
             x = self.PADDING[0] + (self.BLOCK_SIZE[0] + self.BLOCK_PADDING[0]) * i
             y = self.PADDING[1]
             board.paste(self._draw_block(color, letter), (x, y))

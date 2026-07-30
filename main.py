@@ -109,7 +109,7 @@ class WordlePlugin(Star):
 
         word, meaning = random_word_all()
         record_word(word)
-        game = Wordle(word, meaning)
+        game = Wordle(word, meaning, daily=True)
 
         self._games[session_id] = GameSession(
             game=game,
