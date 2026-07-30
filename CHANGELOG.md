@@ -4,7 +4,7 @@
 
 ### 新增
 
-- 每日模式（`/dailyword`）使用独立配色方案：珊瑚色 `#e8734a` / 青蓝色 `#3da5a0` / 灰色
+- 每日模式（`/dailyword`）使用独立配色方案：青蓝色 `#3da5a0` / 珊瑚色 `#e8734a` / 灰色
 - 每日模式完成后再触发 `/dailyword` 会显示当天已猜单词
 - 添加 README.md、LICENSE（MIT）、.gitignore
 

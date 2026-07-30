@@ -28,9 +28,9 @@ class Wordle:
     # 默认配色（绿 / 黄 / 灰）
     CORRECT_COLOR: ClassVar[tuple[int, int, int]] = (134, 163, 115)
     EXIST_COLOR: ClassVar[tuple[int, int, int]] = (198, 182, 109)
-    # 每日模式配色（珊瑚 / 青蓝 / 灰）
-    DAILY_CORRECT_COLOR: ClassVar[tuple[int, int, int]] = (232, 115, 74)
-    DAILY_EXIST_COLOR: ClassVar[tuple[int, int, int]] = (61, 165, 160)
+    # 每日模式配色（青蓝 / 珊瑚 / 灰）
+    DAILY_CORRECT_COLOR: ClassVar[tuple[int, int, int]] = (61, 165, 160)
+    DAILY_EXIST_COLOR: ClassVar[tuple[int, int, int]] = (232, 115, 74)
 
     WRONG_COLOR: ClassVar[tuple[int, int, int]] = (123, 123, 124)
     BORDER_COLOR: ClassVar[tuple[int, int, int]] = (123, 123, 124)
