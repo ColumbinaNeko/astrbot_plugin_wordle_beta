@@ -20,6 +20,7 @@ class GameSession:
     game: Wordle
     is_daily: bool = False
     date_key: str = ""
+    daily_initiator: str = ""
     start_ts: float = 0.0
     timer_task: asyncio.Task | None = None
     umo: str = ""
@@ -90,6 +91,22 @@ class WordlePlugin(Star):
     @filter.command("dailyword", alias={"今日词汇", "dw"})
     async def cmd_dailyword(self, event: AstrMessageEvent):
         """今日词汇每日挑战（每用户每天一次，UTC+8 凌晨 4:00 重置）"""
+        text = event.message_str.strip()
+
+        # /dailyword reset —— 管理员重置自己的每日进度
+        if re.match(r"dailyword\s+reset", text, re.I) or re.match(r"今日词汇\s+reset", text, re.I) or re.match(r"dw\s+reset", text, re.I):
+            if not event.is_admin():
+                yield event.plain_result("权限拦截：重置每日进度仅管理员可用。")
+                return
+            user_id = event.get_sender_id()
+            date_key = self._get_daily_date_key()
+            if (user_id, date_key) in self._daily_used:
+                del self._daily_used[(user_id, date_key)]
+                yield event.plain_result("已重置你的每日词汇进度，可以重新挑战。")
+            else:
+                yield event.plain_result("你今天还没有完成每日词汇挑战，无需重置。")
+            return
+
         user_id = event.get_sender_id()
         session_id = event.get_session_id()
         date_key = self._get_daily_date_key()
@@ -115,6 +132,7 @@ class WordlePlugin(Star):
             game=game,
             is_daily=True,
             date_key=date_key,
+            daily_initiator=user_id,
         )
 
         image_comp = self._create_image_component(game.draw())
@@ -237,9 +255,9 @@ class WordlePlugin(Star):
             return
 
         if game_info.is_daily:
-            game = self._end_daily_game(session_id, event.get_sender_id())
+            game = self._games.pop(session_id).game
             yield event.plain_result(
-                f"今日词汇挑战已强制结束。\n{game.result}"
+                f"今日词汇挑战已被管理员强制结束。\n{game.result}"
             )
             return
 
@@ -271,7 +289,15 @@ class WordlePlugin(Star):
     def _end_daily_game(self, session_id: str, user_id: str) -> Wordle:
         info = self._games.pop(session_id)
         self._daily_used[(user_id, info.date_key)] = info.game.word
+        self._purge_stale_daily()
         return info.game
+
+    def _purge_stale_daily(self) -> None:
+        """清理 _daily_used 中非今天的过期条目，防止内存泄漏。"""
+        today = self._get_daily_date_key()
+        stale = [k for k in self._daily_used if k[1] != today]
+        for k in stale:
+            del self._daily_used[k]
 
     def _reset_timer(self, session_id: str) -> None:
         session = self._games[session_id]

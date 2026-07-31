@@ -3,6 +3,6 @@ display_name: Wordle 猜单词游戏
 short_desc: 支持群聊多人同猜，带彩色图片反馈
 desc: Wordle 猜单词游戏，支持群聊多人同猜，带彩色图片反馈。可自定义单词长度和词典，提供图片化棋盘和提示。
 author: ColumbinaNeko
-version: 1.0.1
+version: 1.0.2
 astrbot_version: ">=4.14.8"
 repo: https://github.com/ColumbinaNeko/astrbot_plugin_wordle_beta
