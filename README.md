@@ -28,6 +28,7 @@ AstrBot 群聊多人 Wordle 插件，支持彩色图片棋盘反馈、每日挑�
 | `/dailyword` | `今日词汇` `dw` | 每日词汇挑战（每用户每天一次，计入词云；完成后再次触发显示当天单词） |
 | `/guess <单词>` | `g` | 提交猜测 |
 | `/hint` | — | 获取当前棋盘提示（已揭示的字母用 `*` 遮盖未揭示部分） |
+| `/dailyword reset` | `今日词汇 reset` | 管理员重置自己当天的每日挑战进度 |
 | `/stop_game` | — | 管理员强制结束当前游戏 |
 | `/wordcloud` | `词云` `wc` | 生成历史猜测单词的词云图 |
 
@@ -40,6 +41,7 @@ AstrBot 群聊多人 Wordle 插件，支持彩色图片棋盘反馈、每日挑�
 /dailyword                       # 今日词汇每日挑战
 /guess apple                     # 猜测单词 apple
 /hint                            # 获取提示
+/dailyword reset                 # 管理员重置当天每日挑战进度
 /stop_game                       # 管理员强制结束
 /wordcloud                       # 查看词云
 ```
