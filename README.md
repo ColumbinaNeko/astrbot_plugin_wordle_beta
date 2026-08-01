@@ -1,5 +1,9 @@
 # Wordle 猜单词游戏 🎯
 
+<p align="center">
+  <img src="logo.png" width="120" alt="Wordle 插件图标"/>
+</p>
+
 AstrBot 群聊多人 Wordle 插件，支持彩色图片棋盘反馈、每日挑战和词云统计。
 
 ## 环境要求
