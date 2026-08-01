@@ -4,6 +4,13 @@
   <img src="logo.png" width="120" alt="Wordle 插件图标"/>
 </p>
 
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/AstrBot-%3E%3D4.14.8-orange" alt="AstrBot >= 4.14.8">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey" alt="Platform">
+</p>
+
 AstrBot 群聊多人 Wordle 插件，支持彩色图片棋盘反馈、每日挑战和词云统计。
 
 ## 环境要求
@@ -116,6 +123,10 @@ astrbot_plugin_wordle_beta/
 - 拼写校验基于 pyspellchecker 的 `en` 语料库 (~49K 词)
 - 词云以 Twitter Logo 为遮罩，配色与棋盘主题统一
 - SQLite 存储词典数据，支持热加载自定义词典
+
+## 更新日志
+
+版本更新记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 致谢
 
