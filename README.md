@@ -1,8 +1,4 @@
-# Wordle 猜单词游戏 🎯
-
-<p align="center">
-  <img src="logo.png" width="120" alt="Wordle 插件图标"/>
-</p>
+# <img src="logo.png" width="36" height="36" alt=""/> Wordle 猜单词游戏 🎯
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
