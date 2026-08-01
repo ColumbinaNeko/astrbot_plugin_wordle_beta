@@ -1,11 +1,4 @@
-# <img src="logo.png" width="36" height="36" alt=""/> Wordle 猜单词游戏 🎯
-
-<p align="center">
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python 3.10+">
-  <img src="https://img.shields.io/badge/AstrBot-%3E%3D4.14.8-orange" alt="AstrBot >= 4.14.8">
-  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey" alt="Platform">
-</p>
+# Wordle 猜单词游戏 🎯
 
 AstrBot 群聊多人 Wordle 插件，支持彩色图片棋盘反馈、每日挑战和词云统计。
 
