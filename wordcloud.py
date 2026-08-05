@@ -46,6 +46,7 @@ def _color_func(_word, font_size, position, random_state=None, **__):
     _ = _word, font_size, position
     if random_state is None:
         import random
+
         return random.choice(_COLORS)
     return random_state.choice(_COLORS)  # type: ignore[union-attr]
 

@@ -32,7 +32,9 @@ def _init_db(conn: sqlite3.Connection) -> None:
         "CREATE TABLE IF NOT EXISTS custom_words (dict_name TEXT NOT NULL, word TEXT NOT NULL, meaning TEXT, length INTEGER NOT NULL)"
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_dict_len ON words (dict_name, length)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_custom_dict_len ON custom_words (dict_name, length)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_custom_dict_len ON custom_words (dict_name, length)"
+    )
 
 
 class CustomDictEntry(BaseModel):
@@ -42,7 +44,9 @@ class CustomDictEntry(BaseModel):
 
 
 def _sync_custom_dicts(conn: sqlite3.Connection) -> None:
-    existing = {r[0] for r in conn.execute("SELECT DISTINCT dict_name FROM custom_words")}
+    existing = {
+        r[0] for r in conn.execute("SELECT DISTINCT dict_name FROM custom_words")
+    }
     on_disk = set()
     _CUSTOM_DIR.mkdir(parents=True, exist_ok=True)
     for f in _CUSTOM_DIR.glob("*.json"):
@@ -53,7 +57,11 @@ def _sync_custom_dicts(conn: sqlite3.Connection) -> None:
         data = json.loads(f.read_text(encoding="utf-8"))
         rows = []
         for word, entry in data.items():
-            validated = CustomDictEntry.model_validate(entry) if isinstance(entry, dict) else CustomDictEntry()
+            validated = (
+                CustomDictEntry.model_validate(entry)
+                if isinstance(entry, dict)
+                else CustomDictEntry()
+            )
             rows.append((dict_name, word, validated.meaning, len(word)))
         conn.executemany("INSERT INTO custom_words VALUES (?,?,?,?)", rows)
     for removed in existing - on_disk:
@@ -105,14 +113,17 @@ def save_png(img: Image.Image) -> BytesIO:
 
 
 def random_word_all(min_len: int = 3, max_len: int = 8) -> tuple[str, str]:
-    """从所有词典中随机选取一个长度在 [min_len, max_len] 区间的单词。"""
+    """从所有词典中随机选取一个长度在 [min_len, max_len] 区间的单词。
+
+    跨词典按小写去重后再抽样，避免同一单词在多个词典中重复出现导致被抽中概率偏高。
+    """
     with _get_conn() as conn:
         row = conn.execute(
             "SELECT word, meaning FROM ("
             "SELECT word, meaning FROM words WHERE length BETWEEN ? AND ? "
             "UNION ALL "
             "SELECT word, meaning FROM custom_words WHERE length BETWEEN ? AND ?"
-            ") ORDER BY RANDOM() LIMIT 1",
+            ") GROUP BY LOWER(word) ORDER BY RANDOM() LIMIT 1",
             (min_len, max_len, min_len, max_len),
         ).fetchone()
     if row is None:

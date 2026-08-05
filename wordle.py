@@ -1,3 +1,4 @@
+import random
 from enum import Enum
 from io import BytesIO
 from typing import ClassVar, cast
@@ -60,6 +61,7 @@ class Wordle:
             self.correct_color = self.CORRECT_COLOR
             self.exist_color = self.EXIST_COLOR
 
+        self.hint_forced = False  # 是否触发了半程援助（随机亮出一个正确字母）
         self.font = _get_font()
 
     def guess(self, word: str) -> GuessResult | None:
@@ -142,13 +144,23 @@ class Wordle:
         return save_png(board)
 
     def get_hint(self) -> str:
-        """返回当前提示：已猜中的字母显示，未猜中的用 '*' 遮盖。"""
+        """返回当前提示：已猜中的字母显示，未猜中的用 '*' 遮盖。
+
+        若猜测次数超过一半仍未定位到任何字母，则随机亮出一个位置的正确字母作为半程援助。
+        """
         revealed = set()
         for w in self.guessed_words:
             for letter in w:
                 if letter in self.word_lower:
                     revealed.add(letter)
-        return "".join(ch if ch in revealed else "*" for ch in self.word_lower)
+
+        hint = "".join(ch if ch in revealed else "*" for ch in self.word_lower)
+        self.hint_forced = False
+        if not revealed and len(self.guessed_words) * 2 > self.rows:
+            pos = random.randrange(self.length)
+            hint = hint[:pos] + self.word_lower[pos] + hint[pos + 1 :]
+            self.hint_forced = True
+        return hint
 
     def draw_hint(self, hint: str) -> BytesIO:
         """绘制提示行。"""

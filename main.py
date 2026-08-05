@@ -14,6 +14,9 @@ from .data_source import dic_list, random_word, random_word_all
 from .wordcloud import generate_wordcloud, record_word
 from .wordle import GuessResult, Wordle
 
+# 全局超时秒数：普通局 5 分钟无操作自动结束
+TIMEOUT = 300
+
 
 @dataclass
 class GameSession:
@@ -27,8 +30,6 @@ class GameSession:
 
 
 class WordlePlugin(Star):
-    TIMEOUT = 300
-
     def __init__(self, context: Context):
         super().__init__(context)
         self._games: dict[str, GameSession] = {}
@@ -66,7 +67,11 @@ class WordlePlugin(Star):
                 )
                 return
 
-        word, meaning = random_word(dictionary, length)
+        try:
+            word, meaning = random_word(dictionary, length)
+        except ValueError as e:
+            yield event.plain_result(str(e))
+            return
         record_word(word)
         game = Wordle(word, meaning)
 
@@ -94,7 +99,11 @@ class WordlePlugin(Star):
         text = event.message_str.strip()
 
         # /dailyword reset —— 管理员重置自己的每日进度
-        if re.match(r"dailyword\s+reset", text, re.I) or re.match(r"今日词汇\s+reset", text, re.I) or re.match(r"dw\s+reset", text, re.I):
+        if (
+            re.match(r"dailyword\s+reset", text, re.I)
+            or re.match(r"今日词汇\s+reset", text, re.I)
+            or re.match(r"dw\s+reset", text, re.I)
+        ):
             if not event.is_admin():
                 yield event.plain_result("权限拦截：重置每日进度仅管理员可用。")
                 return
@@ -124,7 +133,11 @@ class WordlePlugin(Star):
             )
             return
 
-        word, meaning = random_word_all()
+        try:
+            word, meaning = random_word_all()
+        except ValueError as e:
+            yield event.plain_result(str(e))
+            return
         record_word(word)
         game = Wordle(word, meaning, daily=True)
 
@@ -237,7 +250,12 @@ class WordlePlugin(Star):
             return
 
         image_comp = self._create_image_component(game_info.game.draw_hint(hint))
-        yield event.chain_result([image_comp])
+        if game_info.game.hint_forced:
+            yield event.chain_result(
+                [image_comp, Comp.Plain("🤝 半程援助：随机亮出了一个正确字母，加油！")]
+            )
+        else:
+            yield event.chain_result([image_comp])
 
     @filter.command("stop_game")
     async def cmd_stop(self, event: AstrMessageEvent):
@@ -256,9 +274,7 @@ class WordlePlugin(Star):
 
         if game_info.is_daily:
             game = self._games.pop(session_id).game
-            yield event.plain_result(
-                f"今日词汇挑战已被管理员强制结束。\n{game.result}"
-            )
+            yield event.plain_result(f"今日词汇挑战已被管理员强制结束。\n{game.result}")
             return
 
         _, msg = await self._stop_game(session_id)
@@ -284,7 +300,7 @@ class WordlePlugin(Star):
         return now.strftime("%Y%m%d")
 
     def _is_timed_out(self, session: GameSession) -> bool:
-        return time.time() - session.start_ts > self.TIMEOUT
+        return time.time() - session.start_ts > TIMEOUT
 
     def _end_daily_game(self, session_id: str, user_id: str) -> Wordle:
         info = self._games.pop(session_id)
@@ -328,7 +344,9 @@ class WordlePlugin(Star):
         if timer_task is not None:
             timer_task.cancel()
 
-        msg = "⏳ 猜单词超时（5分钟无操作），游戏结束。" if timed_out else "游戏已结束。"
+        msg = (
+            "⏳ 猜单词超时（5分钟无操作），游戏结束。" if timed_out else "游戏已结束。"
+        )
         if game.guessed_words:
             msg += f"\n{game.result}"
 
@@ -337,7 +355,7 @@ class WordlePlugin(Star):
     async def _timeout_monitor(self, session_id: str):
         """后台异步守候任务，监听单次猜测或新局的5分钟生命周期"""
         try:
-            await asyncio.sleep(self.TIMEOUT)
+            await asyncio.sleep(TIMEOUT)
             if session_id not in self._games:
                 return
 
