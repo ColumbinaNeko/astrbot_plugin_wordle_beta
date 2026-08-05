@@ -299,7 +299,8 @@ class WordlePlugin(Star):
             now = now - timedelta(days=1)
         return now.strftime("%Y%m%d")
 
-    def _is_timed_out(self, session: GameSession) -> bool:
+    @staticmethod
+    def _is_timed_out(session: GameSession) -> bool:
         return time.time() - session.start_ts > TIMEOUT
 
     def _end_daily_game(self, session_id: str, user_id: str) -> Wordle:
