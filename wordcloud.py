@@ -1,4 +1,5 @@
 import json
+import threading
 from io import BytesIO
 from pathlib import Path
 
@@ -26,11 +27,16 @@ def _get_stats_path() -> Path:
     return _get_data_dir() / "wordle_stats.json"
 
 
+# record_word 现在线程池中执行，与 _load_stats 的读取并发，用锁保护读改写
+_stats_lock = threading.Lock()
+
+
 def _load_stats() -> dict[str, int]:
     p = _get_stats_path()
     if not p.exists():
         return {}
-    return json.loads(p.read_text(encoding="utf-8"))
+    with _stats_lock:
+        return json.loads(p.read_text(encoding="utf-8"))
 
 
 def _load_mask() -> np.ndarray | None:
@@ -54,11 +60,12 @@ def _color_func(_word, font_size, position, random_state=None, **__):
 def record_word(word: str) -> None:
     p = _get_stats_path()
     p.parent.mkdir(parents=True, exist_ok=True)
-    stats: dict[str, int] = {}
-    if p.exists():
-        stats = json.loads(p.read_text(encoding="utf-8"))
-    stats[word] = stats.get(word, 0) + 1
-    p.write_text(json.dumps(stats, ensure_ascii=False), encoding="utf-8")
+    with _stats_lock:
+        stats: dict[str, int] = {}
+        if p.exists():
+            stats = json.loads(p.read_text(encoding="utf-8"))
+        stats[word] = stats.get(word, 0) + 1
+        p.write_text(json.dumps(stats, ensure_ascii=False), encoding="utf-8")
 
 
 def generate_wordcloud(max_words: int = 50) -> BytesIO:
@@ -69,7 +76,8 @@ def generate_wordcloud(max_words: int = 50) -> BytesIO:
     wc = WordCloud(
         width=800,
         height=600,
-        background_color="#181818",
+        background_color=None,
+        mode="RGBA",
         font_path=_FONT_PATH,
         max_words=max_words,
         color_func=_color_func,
@@ -90,7 +98,8 @@ def _empty() -> BytesIO:
     wc = WordCloud(
         width=800,
         height=200,
-        background_color="#181818",
+        background_color=None,
+        mode="RGBA",
         font_path=_FONT_PATH,
         max_words=1,
         mask=_load_mask(),

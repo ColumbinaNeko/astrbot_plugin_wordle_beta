@@ -21,7 +21,16 @@ def _get_data_dir() -> Path:
 
 _CUSTOM_DIR = _get_data_dir() / "custom_dict"
 
-_spell = SpellChecker()
+_spell: SpellChecker | None = None
+
+
+def _get_spell() -> SpellChecker:
+    """Lazily load the spell checker dictionary on first legal check."""
+    global _spell
+    if _spell is None:
+        _spell = SpellChecker()
+    assert _spell is not None
+    return _spell
 
 
 def _init_db(conn: sqlite3.Connection) -> None:
@@ -69,15 +78,25 @@ def _sync_custom_dicts(conn: sqlite3.Connection) -> None:
 
 
 def _get_conn() -> sqlite3.Connection:
+    """轻量连接：仅建库，不同步自定义词典。
+
+    自定义词典的同步只在模块加载（_get_dic_list）时执行一次，
+    避免每次开局都全量扫描磁盘目录、解析 JSON。
+    """
     conn = sqlite3.connect(str(_DB_PATH))
     conn.row_factory = sqlite3.Row
     _init_db(conn)
+    return conn
+
+
+def _get_conn_with_sync() -> sqlite3.Connection:
+    conn = _get_conn()
     _sync_custom_dicts(conn)
     return conn
 
 
 def _get_dic_list() -> list[str]:
-    with _get_conn() as conn:
+    with _get_conn_with_sync() as conn:
         rows = conn.execute(
             "SELECT DISTINCT dict_name FROM words "
             "UNION SELECT DISTINCT dict_name FROM custom_words ORDER BY dict_name"
@@ -89,7 +108,7 @@ dic_list: list[str] = _get_dic_list()
 
 
 def legal_word(word: str) -> bool:
-    return not _spell.unknown((word,))
+    return not _get_spell().unknown((word,))
 
 
 def random_word(dic_name: str = "CET4", word_length: int = 5) -> tuple[str, str]:

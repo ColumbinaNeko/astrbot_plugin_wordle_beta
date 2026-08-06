@@ -68,11 +68,11 @@ class WordlePlugin(Star):
                 return
 
         try:
-            word, meaning = random_word(dictionary, length)
+            word, meaning = await asyncio.to_thread(random_word, dictionary, length)
         except ValueError as e:
             yield event.plain_result(str(e))
             return
-        record_word(word)
+        await asyncio.to_thread(record_word, word)
         game = Wordle(word, meaning)
 
         self._games[session_id] = GameSession(
@@ -82,7 +82,7 @@ class WordlePlugin(Star):
             umo=event.unified_msg_origin,
         )
 
-        image_comp = self._create_image_component(game.draw())
+        image_comp = self._create_image_component(await asyncio.to_thread(game.draw))
         yield event.chain_result(
             [
                 image_comp,
@@ -134,11 +134,11 @@ class WordlePlugin(Star):
             return
 
         try:
-            word, meaning = random_word_all()
+            word, meaning = await asyncio.to_thread(random_word_all)
         except ValueError as e:
             yield event.plain_result(str(e))
             return
-        record_word(word)
+        await asyncio.to_thread(record_word, word)
         game = Wordle(word, meaning, daily=True)
 
         self._games[session_id] = GameSession(
@@ -148,7 +148,7 @@ class WordlePlugin(Star):
             daily_initiator=user_id,
         )
 
-        image_comp = self._create_image_component(game.draw())
+        image_comp = self._create_image_component(await asyncio.to_thread(game.draw))
         yield event.chain_result(
             [
                 image_comp,
@@ -201,7 +201,7 @@ class WordlePlugin(Star):
         if not is_daily:
             self._reset_timer(session_id)
 
-        image_comp = self._create_image_component(game.draw())
+        image_comp = self._create_image_component(await asyncio.to_thread(game.draw))
 
         if result == GuessResult.WIN:
             if is_daily:
@@ -249,7 +249,9 @@ class WordlePlugin(Star):
             )
             return
 
-        image_comp = self._create_image_component(game_info.game.draw_hint(hint))
+        image_comp = self._create_image_component(
+            await asyncio.to_thread(game_info.game.draw_hint, hint)
+        )
         if game_info.game.hint_forced:
             yield event.chain_result(
                 [image_comp, Comp.Plain("🤝 半程援助：随机亮出了一个正确字母，加油！")]
@@ -282,7 +284,7 @@ class WordlePlugin(Star):
 
     @filter.command("wordcloud", alias={"词云", "wc"})
     async def cmd_wordcloud(self, event: AstrMessageEvent):
-        img_bytes = generate_wordcloud()
+        img_bytes = await asyncio.to_thread(generate_wordcloud)
         img_comp = self._create_image_component(img_bytes)
         yield event.chain_result([img_comp, Comp.Plain("Wordle 词云")])
 
