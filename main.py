@@ -6,16 +6,13 @@ from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 import astrbot.api.message_components as Comp
-from astrbot.api import logger
+from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, MessageChain, filter
 from astrbot.api.star import Context, Star
 
 from .data_source import dic_list, random_word, random_word_all
 from .wordcloud import generate_wordcloud, record_word
 from .wordle import GuessResult, Wordle
-
-# 全局超时秒数：普通局 5 分钟无操作自动结束
-TIMEOUT = 300
 
 HELP_TEXT = (
     "🎯 Wordle 指令帮助\n"
@@ -41,8 +38,19 @@ class GameSession:
 
 
 class WordlePlugin(Star):
-    def __init__(self, context: Context):
+    def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
+        self.config = config
+        self._timeout = max(60, int(config.get("timeout", 300)))
+        self._default_length = max(3, min(8, int(config.get("default_length", 5))))
+        self._default_dict = str(config.get("default_dict", "CET4"))
+        self._daily_reset_hour = max(
+            0, min(23, int(config.get("daily_reset_hour", 4)))
+        )
+        self._wordcloud_max_words = max(10, int(config.get("wordcloud_max_words", 50)))
+        self._hint_forced_ratio = max(
+            0.0, min(1.0, float(config.get("hint_forced_ratio", 0.5)))
+        )
         self._games: dict[str, GameSession] = {}
         self._daily_used: dict[tuple[str, str], str] = {}
         logger.info(f"Wordle 插件加载成功，当前挂载词典: {', '.join(dic_list)}")
@@ -65,8 +73,8 @@ class WordlePlugin(Star):
             )
             return
 
-        length = 5
-        dictionary = "CET4"
+        length = self._default_length
+        dictionary = self._default_dict
 
         if match_l := re.search(r"-l\s+(\d+)", text, re.I):
             length = int(match_l.group(1))
@@ -88,7 +96,7 @@ class WordlePlugin(Star):
             yield event.plain_result(str(e))
             return
         await asyncio.to_thread(record_word, word)
-        game = Wordle(word, meaning)
+        game = Wordle(word, meaning, hint_ratio=self._hint_forced_ratio)
 
         self._games[session_id] = GameSession(
             game=game,
@@ -138,7 +146,7 @@ class WordlePlugin(Star):
         if (user_id, date_key) in self._daily_used:
             yesterday_word = self._daily_used[(user_id, date_key)]
             yield event.plain_result(
-                f"你今天的每日词汇挑战已结束，明日凌晨 4:00 刷新～\n今日单词：{yesterday_word}"
+                f"你今天的每日词汇挑战已结束，明日凌晨 {self._daily_reset_hour}:00 刷新～\n今日单词：{yesterday_word}"
             )
             return
 
@@ -154,7 +162,7 @@ class WordlePlugin(Star):
             yield event.plain_result(str(e))
             return
         await asyncio.to_thread(record_word, word)
-        game = Wordle(word, meaning, daily=True)
+        game = Wordle(word, meaning, daily=True, hint_ratio=self._hint_forced_ratio)
 
         self._games[session_id] = GameSession(
             game=game,
@@ -299,7 +307,9 @@ class WordlePlugin(Star):
 
     @filter.command("wordcloud", alias={"词云", "wc"})
     async def cmd_wordcloud(self, event: AstrMessageEvent):
-        img_bytes = await asyncio.to_thread(generate_wordcloud)
+        img_bytes = await asyncio.to_thread(
+            generate_wordcloud, self._wordcloud_max_words
+        )
         img_comp = self._create_image_component(img_bytes)
         yield event.chain_result([img_comp, Comp.Plain("Wordle 词云")])
 
@@ -308,17 +318,15 @@ class WordlePlugin(Star):
     def _get_game(self, session_id: str) -> GameSession | None:
         return self._games.get(session_id)
 
-    @staticmethod
-    def _get_daily_date_key() -> str:
+    def _get_daily_date_key(self) -> str:
         tz = timezone(timedelta(hours=8))
         now = datetime.now(tz)
-        if now.hour < 4:
+        if now.hour < self._daily_reset_hour:
             now = now - timedelta(days=1)
         return now.strftime("%Y%m%d")
 
-    @staticmethod
-    def _is_timed_out(session: GameSession) -> bool:
-        return time.time() - session.start_ts > TIMEOUT
+    def _is_timed_out(self, session: GameSession) -> bool:
+        return time.time() - session.start_ts > self._timeout
 
     def _end_daily_game(self, session_id: str, user_id: str) -> Wordle:
         info = self._games.pop(session_id)
@@ -363,7 +371,9 @@ class WordlePlugin(Star):
             timer_task.cancel()
 
         msg = (
-            "⏳ 猜单词超时（5分钟无操作），游戏结束。" if timed_out else "游戏已结束。"
+            f"⏳ 猜单词超时（{self._timeout} 秒无操作），游戏结束。"
+            if timed_out
+            else "游戏已结束。"
         )
         if game.guessed_words:
             msg += f"\n{game.result}"
@@ -373,7 +383,7 @@ class WordlePlugin(Star):
     async def _timeout_monitor(self, session_id: str):
         """后台异步守候任务，监听单次猜测或新局的5分钟生命周期"""
         try:
-            await asyncio.sleep(TIMEOUT)
+            await asyncio.sleep(self._timeout)
             if session_id not in self._games:
                 return
 

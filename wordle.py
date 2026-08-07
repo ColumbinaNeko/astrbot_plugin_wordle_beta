@@ -45,12 +45,15 @@ class Wordle:
     FONT_SIZE: ClassVar[int] = 20
     FONT_NAME: ClassVar[str] = "KarnakPro-Bold.ttf"
 
-    def __init__(self, word: str, meaning: str, *, daily: bool = False):
+    def __init__(
+        self, word: str, meaning: str, *, daily: bool = False, hint_ratio: float = 0.5
+    ):
         self.word = word
         self.meaning = meaning
         self.word_lower = word.lower()
         self.length = len(word)
         self.rows = self.length + 1  # 可猜次数
+        self.hint_ratio = hint_ratio
         self.guessed_words: list[str] = []
         self.result = f"【单词】：{self.word}\n【释义】：{self.meaning or '（暂无）'}"
 
@@ -156,7 +159,7 @@ class Wordle:
 
         hint = "".join(ch if ch in revealed else "*" for ch in self.word_lower)
         self.hint_forced = False
-        if not revealed and len(self.guessed_words) * 2 > self.rows:
+        if not revealed and len(self.guessed_words) / self.rows > self.hint_ratio:
             pos = random.randrange(self.length)
             hint = hint[:pos] + self.word_lower[pos] + hint[pos + 1 :]
             self.hint_forced = True

@@ -1,0 +1,43 @@
+{
+    "timeout": {
+        "description": "普通局超时时间（秒）",
+        "hint": "非每日模式下无操作自动结束的秒数",
+        "type": "int",
+        "slider": {"min": 60, "max": 1800, "step": 60},
+        "default": 300
+    },
+    "default_length": {
+        "description": "默认单词长度",
+        "hint": "不带 -l 参数开局时使用的单词长度（3~8）",
+        "type": "int",
+        "slider": {"min": 3, "max": 8, "step": 1},
+        "default": 5
+    },
+    "default_dict": {
+        "description": "默认词典",
+        "hint": "不带 -d 参数开局时使用的词典名称",
+        "type": "string",
+        "default": "CET4"
+    },
+    "daily_reset_hour": {
+        "description": "每日挑战重置时间（UTC+8 小时）",
+        "hint": "每天凌晨该时刻刷新每日挑战",
+        "type": "int",
+        "slider": {"min": 0, "max": 23, "step": 1},
+        "default": 4
+    },
+    "wordcloud_max_words": {
+        "description": "词云最大单词数",
+        "hint": "生成词云时展示的单词数量上限",
+        "type": "int",
+        "slider": {"min": 10, "max": 200, "step": 10},
+        "default": 50
+    },
+    "hint_forced_ratio": {
+        "description": "半程援助触发阈值",
+        "hint": "已猜次数/总次数超过该比例且未命中任何字母时，随机亮出一个正确字母",
+        "type": "float",
+        "slider": {"min": 0.1, "max": 1.0, "step": 0.1},
+        "default": 0.5
+    }
+}
