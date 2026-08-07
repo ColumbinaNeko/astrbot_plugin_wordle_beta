@@ -25,6 +25,9 @@ HELP_TEXT = (
     "/wordcloud：生成词云"
 )
 
+# 已有对局提示（普通局与每日挑战共用）
+GAME_IN_PROGRESS = "已有进行中的战局，请结束后再开局。"
+
 
 @dataclass
 class GameSession:
@@ -69,9 +72,7 @@ class WordlePlugin(Star):
             return
 
         if session_id in self._games:
-            yield event.plain_result(
-                "当前已有正在进行的 Wordle 局，请在结束后重试，或由管理员使用 /stop_game 强开。"
-            )
+            yield event.plain_result(GAME_IN_PROGRESS)
             return
 
         length = self._default_length
@@ -81,7 +82,7 @@ class WordlePlugin(Star):
             length = int(match_l.group(1))
             if not (3 <= length <= self._max_length):
                 yield event.plain_result(
-                    f"规范限制：单词设定长度必须介于 3 到 {self._max_length} 之间。"
+                    f"单词长度需在 3~{self._max_length} 之间。"
                 )
                 return
 
@@ -89,7 +90,7 @@ class WordlePlugin(Star):
             dictionary = match_d.group(1)
             if dictionary not in dic_list:
                 yield event.plain_result(
-                    f"抱歉，目标词典不可用。当前可用: {', '.join(dic_list)}"
+                    f"词典「{dictionary}」不可用，当前可用：{', '.join(dic_list)}"
                 )
                 return
 
@@ -113,7 +114,7 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"🎯 战局已开！共 {game.rows} 次机会\n/guess <单词> 协同猜词"
+                    f"🎯 战局已开！\n/g <单词> 协同猜词"
                 ),
             ]
         )
@@ -130,7 +131,7 @@ class WordlePlugin(Star):
             or re.match(r"dw\s+reset", text, re.I)
         ):
             if not event.is_admin():
-                yield event.plain_result("权限拦截：重置每日进度仅管理员可用。")
+                yield event.plain_result("仅管理员可重置每日进度。")
                 return
             user_id = event.get_sender_id()
             date_key = self._get_daily_date_key()
@@ -153,9 +154,7 @@ class WordlePlugin(Star):
             return
 
         if session_id in self._games:
-            yield event.plain_result(
-                "当前已有正在进行的 Wordle 局，请在结束后重试，或由管理员使用 /stop_game 强开。"
-            )
+            yield event.plain_result(GAME_IN_PROGRESS)
             return
 
         try:
@@ -180,7 +179,7 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"📅 今日挑战开始！共 {game.rows} 次机会\n/guess <单词> 猜词"
+                    f"📅 今日挑战开始！\n/g <单词> 猜词"
                 ),
             ]
         )
@@ -192,7 +191,7 @@ class WordlePlugin(Star):
         game_info = self._get_game(session_id)
         if game_info is None:
             yield event.plain_result(
-                "本会话当前未开启任何 Wordle 游戏，请先发送 /wordle 或 /dailyword 开局～"
+                "还没有进行中的战局，先 /wordle 或 /dailyword 开局吧～"
             )
             return
 
@@ -206,13 +205,13 @@ class WordlePlugin(Star):
 
         parts = event.message_str.strip().split(maxsplit=1)
         if len(parts) < 2:
-            yield event.plain_result("参数格式不规范，请使用：/guess <你猜的英文单词>")
+            yield event.plain_result("请发送 /g <单词>，例如 /g apple")
             return
 
         word = parts[1].strip().lower()
         if len(word) != game.length:
             yield event.plain_result(
-                f"长度校验不匹配，当前关卡的单词长度应该为 {game.length} 位。"
+                f"单词长度应为 {game.length} 位，请再猜。"
             )
             return
 
@@ -221,7 +220,7 @@ class WordlePlugin(Star):
             yield event.plain_result("该词已被同伴或你自己测试过了，换个方向吧～")
             return
         elif result == GuessResult.ILLEGAL:
-            yield event.plain_result(f"经检验，'{word}' 并非一个合法的标准英文词汇。")
+            yield event.plain_result(f"「{word}」不是合法的英文单词，请换个词。")
             return
 
         if not is_daily:
@@ -260,7 +259,7 @@ class WordlePlugin(Star):
         session_id = event.get_session_id()
         game_info = self._get_game(session_id)
         if game_info is None:
-            yield event.plain_result("没有正在进行中的战局。")
+            yield event.plain_result("还没有进行中的战局。")
             return
 
         if not game_info.is_daily and self._is_timed_out(game_info):
@@ -289,15 +288,13 @@ class WordlePlugin(Star):
     async def cmd_stop(self, event: AstrMessageEvent):
         """强制注销并解密当前游戏面板（仅管理员可用）"""
         if not event.is_admin():
-            yield event.plain_result(
-                "权限拦截：该强拆指令属于特权指令，仅管理员允许调用。"
-            )
+            yield event.plain_result("仅管理员可强制结束游戏。")
             return
 
         session_id = event.get_session_id()
         game_info = self._get_game(session_id)
         if game_info is None:
-            yield event.plain_result("当前会话环境一片安宁，并没有活动中的 Wordle 局。")
+            yield event.plain_result("当前没有进行中的战局。")
             return
 
         if game_info.is_daily:
@@ -306,7 +303,7 @@ class WordlePlugin(Star):
             return
 
         _, msg = await self._stop_game(session_id)
-        yield event.plain_result(f"游戏已被管理员强制清除。\n{msg}")
+        yield event.plain_result(f"游戏已被管理员结束。\n{msg}")
 
     @filter.command("wordcloud", alias={"词云", "wc"})
     async def cmd_wordcloud(self, event: AstrMessageEvent):
@@ -314,7 +311,7 @@ class WordlePlugin(Star):
             generate_wordcloud, self._wordcloud_max_words
         )
         img_comp = self._create_image_component(img_bytes)
-        yield event.chain_result([img_comp, Comp.Plain("Wordle 词云")])
+        yield event.chain_result([img_comp, Comp.Plain("☁️ Wordle 词云")])
 
     # ==================== 内部辅助方法 ====================
 
