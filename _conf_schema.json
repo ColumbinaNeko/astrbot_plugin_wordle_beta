@@ -8,10 +8,17 @@
     },
     "default_length": {
         "description": "默认单词长度",
-        "hint": "不带 -l 参数开局时使用的单词长度（3~8）",
+        "hint": "不带 -l 参数开局时使用的单词长度（3~最大长度）",
         "type": "int",
         "slider": {"min": 3, "max": 8, "step": 1},
         "default": 5
+    },
+    "max_length": {
+        "description": "单词最大长度",
+        "hint": "开局时允许设定的单词长度上限",
+        "type": "int",
+        "slider": {"min": 6, "max": 10, "step": 1},
+        "default": 8
     },
     "default_dict": {
         "description": "默认词典",

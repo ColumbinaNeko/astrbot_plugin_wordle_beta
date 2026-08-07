@@ -42,7 +42,10 @@ class WordlePlugin(Star):
         super().__init__(context)
         self.config = config
         self._timeout = max(60, int(config.get("timeout", 300)))
-        self._default_length = max(3, min(8, int(config.get("default_length", 5))))
+        self._max_length = max(6, min(10, int(config.get("max_length", 8))))
+        self._default_length = max(
+            3, min(self._max_length, int(config.get("default_length", 5)))
+        )
         self._default_dict = str(config.get("default_dict", "CET4"))
         self._daily_reset_hour = max(
             0, min(23, int(config.get("daily_reset_hour", 4)))
@@ -78,8 +81,10 @@ class WordlePlugin(Star):
 
         if match_l := re.search(r"-l\s+(\d+)", text, re.I):
             length = int(match_l.group(1))
-            if not (3 <= length <= 8):
-                yield event.plain_result("规范限制：单词设定长度必须介于 3 到 8 之间。")
+            if not (3 <= length <= self._max_length):
+                yield event.plain_result(
+                    f"规范限制：单词设定长度必须介于 3 到 {self._max_length} 之间。"
+                )
                 return
 
         if match_d := re.search(r"-d\s+([A-Za-z0-9]+)", text, re.I):
@@ -157,7 +162,9 @@ class WordlePlugin(Star):
             return
 
         try:
-            word, meaning = await asyncio.to_thread(random_word_all)
+            word, meaning = await asyncio.to_thread(
+                random_word_all, 3, self._max_length
+            )
         except ValueError as e:
             yield event.plain_result(str(e))
             return
