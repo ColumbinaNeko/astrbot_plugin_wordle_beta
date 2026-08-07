@@ -87,8 +87,7 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"🎯 Wordle 战局已拉开！目标单词长度: {length}，你有 {game.rows} 次试错机会。\n"
-                    "群内群友均可发送 /guess <单词> 协同猜词，发送 /hint 抽取面板提示。"
+                    f"🎯 战局已开！长度 {length}，共 {game.rows} 次机会，/guess <单词> 协同猜词"
                 ),
             ]
         )
@@ -153,8 +152,7 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"📅 今日词汇挑战开始！目标单词长度: {game.length}，你有 {game.rows} 次试错机会。\n"
-                    "发送 /guess <单词> 进行猜测。"
+                    f"📅 今日挑战开始！长度 {game.length}，共 {game.rows} 次机会，/guess <单词> 猜词"
                 ),
             ]
         )
