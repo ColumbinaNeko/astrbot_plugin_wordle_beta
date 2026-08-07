@@ -87,7 +87,8 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"🎯 战局已开！长度 {length}，共 {game.rows} 次机会，/guess <单词> 协同猜词"
+                    f"🎯 战局已开！长度 {length}，共 {game.rows} 次机会\n"
+                    "/guess <单词> 协同猜词"
                 ),
             ]
         )
@@ -152,7 +153,8 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"📅 今日挑战开始！长度 {game.length}，共 {game.rows} 次机会，/guess <单词> 猜词"
+                    f"📅 今日挑战开始！长度 {game.length}，共 {game.rows} 次机会\n"
+                    "/guess <单词> 猜词"
                 ),
             ]
         )
