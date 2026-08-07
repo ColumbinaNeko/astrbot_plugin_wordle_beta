@@ -87,7 +87,7 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"🎯 战局已开！长度 {length}，共 {game.rows} 次机会\n"
+                    f"🎯 战局已开！共 {game.rows} 次机会\n"
                     "/guess <单词> 协同猜词"
                 ),
             ]
@@ -153,7 +153,7 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"📅 今日挑战开始！长度 {game.length}，共 {game.rows} 次机会\n"
+                    f"📅 今日挑战开始！共 {game.rows} 次机会\n"
                     "/guess <单词> 猜词"
                 ),
             ]
@@ -209,7 +209,7 @@ class WordlePlugin(Star):
             else:
                 await self._stop_game(session_id)
             yield event.chain_result(
-                [image_comp, Comp.Plain(f"🎉 绝佳！成功解锁正确答案！\n{game.result}")]
+                [image_comp, Comp.Plain(f"🎉 绝佳！不愧是你！\n{game.result}")]
             )
         elif result == GuessResult.LOSS:
             if is_daily:
@@ -219,13 +219,13 @@ class WordlePlugin(Star):
             yield event.chain_result(
                 [
                     image_comp,
-                    Comp.Plain(f"😭 很遗憾，本局的所有试错额度已用尽。\n{game.result}"),
+                    Comp.Plain(f"😭 很遗憾，这就是结局。\n{game.result}"),
                 ]
             )
         else:
             remaining = game.rows - len(game.guessed_words)
             yield event.chain_result(
-                [image_comp, Comp.Plain(f"提交成功，你还剩下 {remaining} 次猜测机会。")]
+                [image_comp, Comp.Plain(f"✅ 还剩 {remaining} 次机会")]
             )
 
     @filter.command("hint")
