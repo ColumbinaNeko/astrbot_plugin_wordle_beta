@@ -260,7 +260,7 @@ class WordlePlugin(Star):
         hint = game_info.game.get_hint()
         if not hint.replace("*", "").strip():
             yield event.plain_result(
-                "棋盘上还没有出现过定位正确的已知字母，无法生成有效提示线索，再猜一下试试吧！"
+                "还没有猜中任何有效字母，暂时无法生成提示，继续猜吧～"
             )
             return
 
