@@ -51,15 +51,15 @@ AstrBot 群聊多人 Wordle 插件，支持彩色图片棋盘反馈、每日挑�
 
 插件通过 `_conf_schema.json` 声明配置项，可在 AstrBot 管理面板可视化调整，配置文件保存于 `data/config/astrbot_plugin_wordle_beta_config.json`：
 
-| 配置项 | 类型 | 默认值 | 说明 |
-|---|---|---|---|
-| `timeout` | int | 300 | 普通局无操作超时秒数 |
-| `default_length` | int | 5 | 默认单词长度（3~最大长度） |
-| `default_dict` | string | CET4 | 默认词典 |
-| `max_length` | int | 8 | 单词最大长度（6~10） |
-| `daily_reset_hour` | int | 4 | 每日挑战重置时间（UTC+8 小时） |
-| `wordcloud_max_words` | int | 50 | 词云最大单词数 |
-| `hint_forced_ratio` | float | 0.5 | 半程援助触发阈值 |
+| 配置项                   | 类型     | 默认值  | 说明                 |
+|-----------------------|--------|------|--------------------|
+| `timeout`             | int    | 300  | 普通局无操作超时秒数         |
+| `default_length`      | int    | 5    | 默认单词长度（3~最大长度）     |
+| `default_dict`        | string | CET4 | 默认词典               |
+| `max_length`          | int    | 8    | 单词最大长度（6~10）       |
+| `daily_reset_hour`    | int    | 4    | 每日挑战重置时间（UTC+8 小时） |
+| `wordcloud_max_words` | int    | 50   | 词云最大单词数            |
+| `hint_forced_ratio`   | float  | 0.5  | 半程援助触发阈值           |
 
 ## 功能特性
 

@@ -47,9 +47,7 @@ class WordlePlugin(Star):
             3, min(self._max_length, int(config.get("default_length", 5)))
         )
         self._default_dict = str(config.get("default_dict", "CET4"))
-        self._daily_reset_hour = max(
-            0, min(23, int(config.get("daily_reset_hour", 4)))
-        )
+        self._daily_reset_hour = max(0, min(23, int(config.get("daily_reset_hour", 4))))
         self._wordcloud_max_words = max(10, int(config.get("wordcloud_max_words", 50)))
         self._hint_forced_ratio = max(
             0.0, min(1.0, float(config.get("hint_forced_ratio", 0.5)))
@@ -115,8 +113,7 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"🎯 战局已开！共 {game.rows} 次机会\n"
-                    "/guess <单词> 协同猜词"
+                    f"🎯 战局已开！共 {game.rows} 次机会\n/guess <单词> 协同猜词"
                 ),
             ]
         )
@@ -183,8 +180,7 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"📅 今日挑战开始！共 {game.rows} 次机会\n"
-                    "/guess <单词> 猜词"
+                    f"📅 今日挑战开始！共 {game.rows} 次机会\n/guess <单词> 猜词"
                 ),
             ]
         )
