@@ -114,7 +114,7 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"🎯 战局已开！\n/g <单词> 协同猜词"
+                    "🎯 战局已开！\n/g <单词> 开猜"
                 ),
             ]
         )
@@ -179,7 +179,7 @@ class WordlePlugin(Star):
             [
                 image_comp,
                 Comp.Plain(
-                    f"📅 今日挑战开始！\n/g <单词> 猜词"
+                    "📅 今日挑战开始！\n/g <单词> 猜词"
                 ),
             ]
         )
@@ -215,11 +215,11 @@ class WordlePlugin(Star):
             )
             return
 
-        result = game.guess(word)
-        if result == GuessResult.DUPLICATE:
+        guess_result = game.guess(word)
+        if guess_result == GuessResult.DUPLICATE:
             yield event.plain_result("该词已被同伴或你自己测试过了，换个方向吧～")
             return
-        elif result == GuessResult.ILLEGAL:
+        elif guess_result == GuessResult.ILLEGAL:
             yield event.plain_result(f"「{word}」不是合法的英文单词，请换个词。")
             return
 
@@ -228,25 +228,20 @@ class WordlePlugin(Star):
 
         image_comp = self._create_image_component(await asyncio.to_thread(game.draw))
 
-        if result == GuessResult.WIN:
+        if guess_result == GuessResult.WIN:
             if is_daily:
                 self._end_daily_game(session_id, event.get_sender_id())
             else:
                 await self._stop_game(session_id)
-            yield event.chain_result(
-                [image_comp, Comp.Plain(f"🎉 绝佳！不愧是你！\n{game.result}")]
-            )
-        elif result == GuessResult.LOSS:
+            yield event.chain_result([image_comp, Comp.Plain("卧槽!不愧是你!")])
+            yield event.plain_result(game.result)
+        elif guess_result == GuessResult.LOSS:
             if is_daily:
                 self._end_daily_game(session_id, event.get_sender_id())
             else:
                 await self._stop_game(session_id)
-            yield event.chain_result(
-                [
-                    image_comp,
-                    Comp.Plain(f"😭 很遗憾，这就是结局。\n{game.result}"),
-                ]
-            )
+            yield event.chain_result([image_comp, Comp.Plain("😭很遗憾,这就是结局.")])
+            yield event.plain_result(game.result)
         else:
             remaining = game.rows - len(game.guessed_words)
             yield event.chain_result(

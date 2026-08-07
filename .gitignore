@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 *.db-shm
 *.db-wal
+# 本地开发配置（含本机绝对路径）
+pyrightconfig.json

@@ -1,5 +1,17 @@
 # 更新日志
 
+## [1.0.7-beta.1] - 2026-08-07
+
+### 修复
+
+- 规避 Pylance(Pyrefly 引擎) 对 `game.result` 的类型误报：`cmd_guess` 局部变量改名，并显式声明 `Wordle.result: str`
+- wordcloud 库类型标注过窄的误报：`background_color=None`、`relative_scaling=0.5` 行加 `# type: ignore[arg-type]`
+
+### 优化
+
+- WIN/LOSS 结束消息拆分：「单词」「释义」独立成第二条消息，避免与图片卡在同一小卡片
+- 结果文案改用直角引号「『』」，释义缺失占位改为 `(?)`
+
 ## [1.0.5] - 2026-08-07
 
 ## ✨ 新增

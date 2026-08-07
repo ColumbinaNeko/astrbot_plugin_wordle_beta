@@ -44,6 +44,7 @@ class Wordle:
     BORDER_WIDTH: ClassVar[int] = 2
     FONT_SIZE: ClassVar[int] = 20
     FONT_NAME: ClassVar[str] = "KarnakPro-Bold.ttf"
+    result: str  # 单词与释义文本，供 /g 结束消息使用
 
     def __init__(
         self, word: str, meaning: str, *, daily: bool = False, hint_ratio: float = 0.5
@@ -55,7 +56,7 @@ class Wordle:
         self.rows = self.length + 1  # 可猜次数
         self.hint_ratio = hint_ratio
         self.guessed_words: list[str] = []
-        self.result = f"【单词】：{self.word}\n【释义】：{self.meaning or '（暂无）'}"
+        self.result = f"『单词』：{self.word}\n『释义』：{self.meaning or '(?)'}"
 
         if daily:
             self.correct_color = self.DAILY_CORRECT_COLOR

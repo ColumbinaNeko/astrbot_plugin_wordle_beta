@@ -76,13 +76,13 @@ def generate_wordcloud(max_words: int = 50) -> BytesIO:
     wc = WordCloud(
         width=800,
         height=600,
-        background_color=None,
+        background_color=None,  # type: ignore[arg-type]  # wordcloud 标注过窄，None=透明背景合法
         mode="RGBA",
         font_path=_FONT_PATH,
         max_words=max_words,
         color_func=_color_func,
         prefer_horizontal=0.7,
-        relative_scaling=0.5,
+        relative_scaling=0.5,  # type: ignore[arg-type]  # wordcloud 标注过窄，float 运行时合法
         mask=_load_mask(),
         contour_width=0,
     )
@@ -98,7 +98,7 @@ def _empty() -> BytesIO:
     wc = WordCloud(
         width=800,
         height=200,
-        background_color=None,
+        background_color=None,  # type: ignore[arg-type]  # wordcloud 标注过窄，None=透明背景合法
         mode="RGBA",
         font_path=_FONT_PATH,
         max_words=1,
