@@ -17,6 +17,17 @@ from .wordle import GuessResult, Wordle
 # 全局超时秒数：普通局 5 分钟无操作自动结束
 TIMEOUT = 300
 
+HELP_TEXT = (
+    "🎯 Wordle 指令帮助\n"
+    "/wordle [-l 长度] [-d 词典]：开局\n"
+    "/guess <单词>：提交猜测\n"
+    "/hint：获取棋盘提示\n"
+    "/dailyword：今日挑战（每人每日一次）\n"
+    "/dailyword reset：管理员重置今日进度\n"
+    "/stop_game：管理员强制结束\n"
+    "/wordcloud：生成词云"
+)
+
 
 @dataclass
 class GameSession:
@@ -43,13 +54,17 @@ class WordlePlugin(Star):
         """开始游戏，支持使用 -l 参数定义长度(3~8)，使用 -d 配置词典"""
         session_id = event.get_session_id()
 
+        text = event.message_str.strip()
+        if re.search(r"\bhelp\b", text, re.I):
+            yield event.plain_result(HELP_TEXT)
+            return
+
         if session_id in self._games:
             yield event.plain_result(
                 "当前已有正在进行的 Wordle 局，请在结束后重试，或由管理员使用 /stop_game 强开。"
             )
             return
 
-        text = event.message_str.strip()
         length = 5
         dictionary = "CET4"
 
