@@ -31,12 +31,16 @@ def _get_stats_path() -> Path:
 _stats_lock = threading.Lock()
 
 
-def _load_stats() -> dict[str, int]:
+def _load_stats() -> dict[str, dict[str, int]]:
+    """返回按会话隔离的词频统计；旧版扁平数据归入 "global" 会话。"""
     p = _get_stats_path()
     if not p.exists():
         return {}
     with _stats_lock:
-        return json.loads(p.read_text(encoding="utf-8"))
+        raw = json.loads(p.read_text(encoding="utf-8"))
+    if not raw or any(isinstance(v, dict) for v in raw.values()):
+        return raw
+    return {"global": raw}
 
 
 def _load_mask() -> np.ndarray | None:
@@ -57,32 +61,39 @@ def _color_func(_word, font_size, position, random_state=None, **__):
     return random_state.choice(_COLORS)  # type: ignore[union-attr]
 
 
-def record_word(word: str) -> None:
+def record_word(word: str, session_id: str) -> None:
+    """按会话记录词频；旧版扁平数据归入 "global" 会话。"""
     p = _get_stats_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     with _stats_lock:
-        stats: dict[str, int] = {}
         if p.exists():
-            stats = json.loads(p.read_text(encoding="utf-8"))
-        stats[word] = stats.get(word, 0) + 1
+            raw = json.loads(p.read_text(encoding="utf-8"))
+            if raw and not any(isinstance(v, dict) for v in raw.values()):
+                stats: dict[str, dict[str, int]] = {"global": raw}
+            else:
+                stats = raw
+        else:
+            stats = {}
+        per_session = stats.setdefault(session_id, {})
+        per_session[word] = per_session.get(word, 0) + 1
         p.write_text(json.dumps(stats, ensure_ascii=False), encoding="utf-8")
 
 
-def generate_wordcloud(max_words: int = 50) -> BytesIO:
-    stats = _load_stats()
+def generate_wordcloud(max_words: int = 50, session_id: str = "global") -> BytesIO:
+    stats = _load_stats().get(session_id, {})
     if not stats:
         return _empty()
 
     wc = WordCloud(
         width=800,
         height=600,
-        background_color=None,  # type: ignore[arg-type]  # wordcloud 标注过窄，None=透明背景合法
+        background_color=None,  # type: ignore[arg-type]
         mode="RGBA",
         font_path=_FONT_PATH,
         max_words=max_words,
         color_func=_color_func,
         prefer_horizontal=0.7,
-        relative_scaling=0.5,  # type: ignore[arg-type]  # wordcloud 标注过窄，float 运行时合法
+        relative_scaling=0.5,  # type: ignore[arg-type]
         mask=_load_mask(),
         contour_width=0,
     )
@@ -98,7 +109,7 @@ def _empty() -> BytesIO:
     wc = WordCloud(
         width=800,
         height=200,
-        background_color=None,  # type: ignore[arg-type]  # wordcloud 标注过窄，None=透明背景合法
+        background_color=None,  # type: ignore[arg-type]
         mode="RGBA",
         font_path=_FONT_PATH,
         max_words=1,

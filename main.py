@@ -99,7 +99,7 @@ class WordlePlugin(Star):
         except ValueError as e:
             yield event.plain_result(str(e))
             return
-        await asyncio.to_thread(record_word, word)
+        await asyncio.to_thread(record_word, word, session_id)
         game = Wordle(word, meaning, hint_ratio=self._hint_forced_ratio)
 
         self._games[session_id] = GameSession(
@@ -164,7 +164,7 @@ class WordlePlugin(Star):
         except ValueError as e:
             yield event.plain_result(str(e))
             return
-        await asyncio.to_thread(record_word, word)
+        await asyncio.to_thread(record_word, word, session_id)
         game = Wordle(word, meaning, daily=True, hint_ratio=self._hint_forced_ratio)
 
         self._games[session_id] = GameSession(
@@ -305,7 +305,7 @@ class WordlePlugin(Star):
     @filter.command("wordcloud", alias={"词云", "wc"})
     async def cmd_wordcloud(self, event: AstrMessageEvent):
         img_bytes = await asyncio.to_thread(
-            generate_wordcloud, self._wordcloud_max_words
+            generate_wordcloud, self._wordcloud_max_words, event.get_session_id()
         )
         img_comp = self._create_image_component(img_bytes)
         yield event.chain_result([img_comp, Comp.Plain("☁️ Wordle 词云")])

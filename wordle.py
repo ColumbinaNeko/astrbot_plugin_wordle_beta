@@ -44,7 +44,7 @@ class Wordle:
     BORDER_WIDTH: ClassVar[int] = 2
     FONT_SIZE: ClassVar[int] = 20
     FONT_NAME: ClassVar[str] = "KarnakPro-Bold.ttf"
-    result: str  # 单词与释义文本，供 /g 结束消息使用
+    result: str
 
     def __init__(
         self, word: str, meaning: str, *, daily: bool = False, hint_ratio: float = 0.5
