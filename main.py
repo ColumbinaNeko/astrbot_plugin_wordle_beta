@@ -233,15 +233,17 @@ class WordlePlugin(Star):
                 self._end_daily_game(session_id, event.get_sender_id())
             else:
                 await self._stop_game(session_id)
-            yield event.chain_result([image_comp, Comp.Plain("卧槽!不愧是你!")])
-            yield event.plain_result(game.result)
+            yield event.chain_result(
+                [image_comp, Comp.Plain(f"卧槽！不愧是你~\n{game.result}")]
+            )
         elif guess_result == GuessResult.LOSS:
             if is_daily:
                 self._end_daily_game(session_id, event.get_sender_id())
             else:
                 await self._stop_game(session_id)
-            yield event.chain_result([image_comp, Comp.Plain("😭很遗憾,这就是结局.")])
-            yield event.plain_result(game.result)
+            yield event.chain_result(
+                [image_comp, Comp.Plain(f"很遗憾，这就是结局.\n{game.result}")]
+            )
         else:
             remaining = game.rows - len(game.guessed_words)
             yield event.chain_result(
