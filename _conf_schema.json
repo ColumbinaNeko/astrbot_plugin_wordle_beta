@@ -27,8 +27,8 @@
         "default": "CET4"
     },
     "daily_reset_hour": {
-        "description": "每日挑战重置时间（UTC+8 小时）",
-        "hint": "每天凌晨该时刻刷新每日挑战",
+        "description": "每日挑战重置时间（北京时间 0~23 点）",
+        "hint": "每天北京时间该时刻刷新每日挑战，4 表示凌晨 4:00 刷新",
         "type": "int",
         "slider": {"min": 0, "max": 23, "step": 1},
         "default": 4

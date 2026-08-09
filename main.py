@@ -121,7 +121,7 @@ class WordlePlugin(Star):
 
     @filter.command("dailyword", alias={"今日词汇", "dw"})
     async def cmd_dailyword(self, event: AstrMessageEvent):
-        """今日词汇每日挑战（每用户每天一次，UTC+8 凌晨 4:00 重置）"""
+        """今日词汇每日挑战（每用户每天一次，北京时间 daily_reset_hour 时刻重置）"""
         text = event.message_str.strip()
 
         # /dailyword reset —— 管理员重置自己的每日进度
