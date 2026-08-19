@@ -287,8 +287,8 @@ class WordlePlugin(Star):
                 image_comp,
                 Comp.Plain(
                     f"♾️ Absurdle 对抗式开局！\n"
-                    f"难度：{difficulty} · 候选词池：{len(candidates)} 个\n"
-                    f"/g <单词> 开猜，不限制次数"
+                    f"单词候选数：{len(candidates)} \n"
+                    f"/g <单词> 开猜"
                 ),
             ]
         )
@@ -363,7 +363,7 @@ class WordlePlugin(Star):
         elif isinstance(game, Absurdle):
             remaining = len(game.candidates)
             yield event.chain_result(
-                [image_comp, Comp.Plain(f"✅ 已猜 {len(game.guessed_words)} 次 · 剩余可能答案 {remaining}")]
+                [image_comp, Comp.Plain(f"✅ 已猜 {len(game.guessed_words)} 次\n候选数： {remaining}")]
             )
         else:
             remaining = game.rows - len(game.guessed_words)
