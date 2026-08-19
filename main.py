@@ -1,22 +1,58 @@
 import asyncio
+import random
 import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
+from pydantic import BaseModel, Field, model_validator
+
 import astrbot.api.message_components as Comp
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, MessageChain, filter
 from astrbot.api.star import Context, Star
 
-from .data_source import dic_list, random_word, random_word_all
+from .data_source import (
+    dic_list,
+    legal_word,
+    meaning_of,
+    random_word,
+    random_word_all,
+    words_of_length,
+)
+from .engine import Absurdle, GuessResult, Wordle, apply_hint_forced
+from .render import (
+    DAILY_STYLE,
+    DEFAULT_STYLE,
+    render_absurdle_board,
+    render_hint,
+    render_wordle_board,
+)
 from .wordcloud import generate_wordcloud, record_word
-from .wordle import GuessResult, Wordle
+
+
+class PluginConfig(BaseModel):
+    """插件配置的值域与交叉约束，一次解析替代多处手动钳制。"""
+
+    timeout: int = Field(300, ge=60, le=1800)
+    max_length: int = Field(8, ge=6, le=10)
+    default_length: int = Field(5, ge=3)  # 上限由 max_length 交叉钳制
+    default_dict: str = "CET4"
+    daily_reset_hour: int = Field(4, ge=0, le=23)
+    wordcloud_max_words: int = Field(50, ge=10, le=200)
+    hint_forced_ratio: float = Field(0.5, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def _cap_default_length(self):
+        """default_length 不能超过 max_length，否则钳制到上限。"""
+        self.default_length = min(self.default_length, self.max_length)
+        return self
 
 HELP_TEXT = (
     "🎯 Wordle 指令帮助\n"
     "/wordle [-l 长度] [-d 词典]：开局\n"
+    "/absurdle [-l 长度] [-s easy|normal|hard]：对抗式无限猜词\n"
     "/guess <单词>：提交猜测\n"
     "/hint：获取棋盘提示\n"
     "/dailyword：今日挑战（每人每日一次）\n"
@@ -31,7 +67,7 @@ GAME_IN_PROGRESS = "已有进行中的战局，请结束后再开局。"
 
 @dataclass
 class GameSession:
-    game: Wordle
+    game: Wordle | Absurdle
     is_daily: bool = False
     date_key: str = ""
     daily_initiator: str = ""
@@ -44,17 +80,14 @@ class WordlePlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
         self.config = config
-        self._timeout = max(60, int(config.get("timeout", 300)))
-        self._max_length = max(6, min(10, int(config.get("max_length", 8))))
-        self._default_length = max(
-            3, min(self._max_length, int(config.get("default_length", 5)))
-        )
-        self._default_dict = str(config.get("default_dict", "CET4"))
-        self._daily_reset_hour = max(0, min(23, int(config.get("daily_reset_hour", 4))))
-        self._wordcloud_max_words = max(10, int(config.get("wordcloud_max_words", 50)))
-        self._hint_forced_ratio = max(
-            0.0, min(1.0, float(config.get("hint_forced_ratio", 0.5)))
-        )
+        cfg = PluginConfig.model_validate(dict(config))
+        self._timeout = cfg.timeout
+        self._max_length = cfg.max_length
+        self._default_length = cfg.default_length
+        self._default_dict = cfg.default_dict
+        self._daily_reset_hour = cfg.daily_reset_hour
+        self._wordcloud_max_words = cfg.wordcloud_max_words
+        self._hint_forced_ratio = cfg.hint_forced_ratio
         self._games: dict[str, GameSession] = {}
         self._daily_used: dict[tuple[str, str], str] = {}
         logger.info(f"Wordle 插件加载成功，当前挂载词典: {', '.join(dic_list)}")
@@ -100,7 +133,12 @@ class WordlePlugin(Star):
             yield event.plain_result(str(e))
             return
         await asyncio.to_thread(record_word, word, session_id)
-        game = Wordle(word, meaning, hint_ratio=self._hint_forced_ratio)
+        game = Wordle(
+            word,
+            meaning,
+            hint_ratio=self._hint_forced_ratio,
+            is_valid=legal_word,
+        )
 
         self._games[session_id] = GameSession(
             game=game,
@@ -109,7 +147,9 @@ class WordlePlugin(Star):
             umo=event.unified_msg_origin,
         )
 
-        image_comp = self._create_image_component(await asyncio.to_thread(game.draw))
+        image_comp = self._create_image_component(
+            await asyncio.to_thread(self._render_board_image, game, False)
+        )
         yield event.chain_result(
             [
                 image_comp,
@@ -149,7 +189,7 @@ class WordlePlugin(Star):
         if (user_id, date_key) in self._daily_used:
             yesterday_word = self._daily_used[(user_id, date_key)]
             yield event.plain_result(
-                f"你今天的每日词汇挑战已结束，明日凌晨 {self._daily_reset_hour}:00 刷新～\n今日单词：{yesterday_word}"
+                f"你今天的每日词汇挑战已结束，明日 {self._daily_reset_hour}:00 刷新～\n今日单词：{yesterday_word}"
             )
             return
 
@@ -165,7 +205,12 @@ class WordlePlugin(Star):
             yield event.plain_result(str(e))
             return
         await asyncio.to_thread(record_word, word, session_id)
-        game = Wordle(word, meaning, daily=True, hint_ratio=self._hint_forced_ratio)
+        game = Wordle(
+            word,
+            meaning,
+            hint_ratio=self._hint_forced_ratio,
+            is_valid=legal_word,
+        )
 
         self._games[session_id] = GameSession(
             game=game,
@@ -174,12 +219,76 @@ class WordlePlugin(Star):
             daily_initiator=user_id,
         )
 
-        image_comp = self._create_image_component(await asyncio.to_thread(game.draw))
+        image_comp = self._create_image_component(
+            await asyncio.to_thread(self._render_board_image, game, True)
+        )
         yield event.chain_result(
             [
                 image_comp,
                 Comp.Plain(
                     "📅 今日挑战开始！\n/g <单词> 猜词"
+                ),
+            ]
+        )
+
+    @filter.command("absurdle", alias={"wd_a"})
+    async def cmd_absurdle(self, event: AstrMessageEvent):
+        """对抗式无限猜词：不预设答案，每猜一次保留最不利的候选子集"""
+        session_id = event.get_session_id()
+        text = event.message_str.strip()
+
+        if session_id in self._games:
+            yield event.plain_result(GAME_IN_PROGRESS)
+            return
+
+        length = self._default_length
+        difficulty = "normal"
+
+        if match_l := re.search(r"-l\s+(\d+)", text, re.I):
+            length = int(match_l.group(1))
+            if not (3 <= length <= self._max_length):
+                yield event.plain_result(
+                    f"单词长度需在 3~{self._max_length} 之间。"
+                )
+                return
+
+        if match_s := re.search(r"-s\s+([A-Za-z]+)", text, re.I):
+            difficulty = match_s.group(1).lower()
+            if difficulty not in ("easy", "normal", "hard"):
+                yield event.plain_result(
+                    "难度参数仅支持 easy / normal / hard。"
+                )
+                return
+
+        candidates = await asyncio.to_thread(words_of_length, None, length)
+        if len(candidates) < 2:
+            yield event.plain_result(f"词池中长度为 {length} 的单词不足，无法开局。")
+            return
+
+        game = Absurdle(
+            candidates,
+            length,
+            difficulty=difficulty,
+            is_valid=legal_word,
+            meaning_of=meaning_of,
+        )
+        self._games[session_id] = GameSession(
+            game=game,
+            start_ts=time.time(),
+            timer_task=asyncio.create_task(self._timeout_monitor(session_id)),
+            umo=event.unified_msg_origin,
+        )
+
+        image_comp = self._create_image_component(
+            await asyncio.to_thread(self._render_board_image, game, False)
+        )
+        yield event.chain_result(
+            [
+                image_comp,
+                Comp.Plain(
+                    f"♾️ Absurdle 对抗式开局！\n"
+                    f"难度：{difficulty} · 候选词池：{len(candidates)} 个\n"
+                    f"/g <单词> 开猜，不限制次数"
                 ),
             ]
         )
@@ -191,17 +300,18 @@ class WordlePlugin(Star):
         game_info = self._get_game(session_id)
         if game_info is None:
             yield event.plain_result(
-                "还没有进行中的战局，先 /wordle 或 /dailyword 开局吧～"
+                "还没有进行中的战局～"
             )
             return
 
         is_daily = game_info.is_daily
+        game = game_info.game
+        is_absurdle = isinstance(game, Absurdle)
+
         if not is_daily and self._is_timed_out(game_info):
             _, msg = await self._stop_game(session_id)
             yield event.plain_result(msg)
             return
-
-        game = game_info.game
 
         parts = event.message_str.strip().split(maxsplit=1)
         if len(parts) < 2:
@@ -226,15 +336,21 @@ class WordlePlugin(Star):
         if not is_daily:
             self._reset_timer(session_id)
 
-        image_comp = self._create_image_component(await asyncio.to_thread(game.draw))
+        image_comp = self._create_image_component(
+            await asyncio.to_thread(self._render_board_image, game, is_daily)
+        )
 
         if guess_result == GuessResult.WIN:
             if is_daily:
                 self._end_daily_game(session_id, event.get_sender_id())
+            elif is_absurdle:
+                await asyncio.to_thread(record_word, game.guessed_words[-1], session_id)
+                await self._stop_game(session_id)
             else:
                 await self._stop_game(session_id)
+            text = "🎉 卧槽！不愧是你~" if not is_absurdle else "🎉 你逼出了答案！"
             yield event.chain_result(
-                [image_comp, Comp.Plain(f"🎉 卧槽！不愧是你~\n{game.result}")]
+                [image_comp, Comp.Plain(f"{text}\n{game.result}")]
             )
         elif guess_result == GuessResult.LOSS:
             if is_daily:
@@ -243,6 +359,11 @@ class WordlePlugin(Star):
                 await self._stop_game(session_id)
             yield event.chain_result(
                 [image_comp, Comp.Plain(f"❌ 很遗憾，这就是结局.\n{game.result}")]
+            )
+        elif isinstance(game, Absurdle):
+            remaining = len(game.candidates)
+            yield event.chain_result(
+                [image_comp, Comp.Plain(f"✅ 已猜 {len(game.guessed_words)} 次 · 剩余可能答案 {remaining}")]
             )
         else:
             remaining = game.rows - len(game.guessed_words)
@@ -264,17 +385,31 @@ class WordlePlugin(Star):
             yield event.plain_result(msg)
             return
 
-        hint = game_info.game.get_hint()
+        game = game_info.game
+        is_absurdle = isinstance(game, Absurdle)
+        hint = game.get_hint()
+        hint_forced = False
+        if isinstance(game, Wordle):
+            hint, hint_forced = apply_hint_forced(game, hint)
         if not hint.replace("*", "").strip():
-            yield event.plain_result(
-                "还没有猜中任何有效字母，暂时无法生成提示，继续猜吧～"
-            )
+            if is_absurdle:
+                yield event.plain_result(
+                    "所有剩余候选在这些位置上都没有公共字母，继续猜吧～"
+                )
+            else:
+                yield event.plain_result(
+                    "还没有猜中任何有效字母，暂时无法生成提示，继续猜吧～"
+                )
             return
 
         image_comp = self._create_image_component(
-            await asyncio.to_thread(game_info.game.draw_hint, hint)
+            await asyncio.to_thread(self._render_hint_image, hint, game_info.is_daily)
         )
-        if game_info.game.hint_forced:
+        if is_absurdle:
+            yield event.chain_result(
+                [image_comp, Comp.Plain("🔎 公共字母：所有候选在这些位置上的字母唯一")]
+            )
+        elif hint_forced:
             yield event.chain_result(
                 [image_comp, Comp.Plain("🤝 半程援助：随机亮出了一个正确字母，加油！")]
             )
@@ -327,6 +462,8 @@ class WordlePlugin(Star):
 
     def _end_daily_game(self, session_id: str, user_id: str) -> Wordle:
         info = self._games.pop(session_id)
+        if not isinstance(info.game, Wordle):
+            raise TypeError("每日挑战的游戏不是 Wordle 实例")
         self._daily_used[(user_id, info.date_key)] = info.game.word
         self._purge_stale_daily()
         return info.game
@@ -353,9 +490,23 @@ class WordlePlugin(Star):
             return Comp.Image.fromIO(img_data)
         return Comp.Image.fromBytes(img_data)
 
+    @staticmethod
+    def _render_board_image(game: Wordle | Absurdle, is_daily: bool):
+        """按模式选样式渲染棋盘（Wordle / Absurdle 共用）。"""
+        style = DAILY_STYLE if is_daily else DEFAULT_STYLE
+        if isinstance(game, Absurdle):
+            return render_absurdle_board(game, style)
+        return render_wordle_board(game, style)
+
+    @staticmethod
+    def _render_hint_image(hint: str, is_daily: bool):
+        """按模式选样式渲染提示行。"""
+        style = DAILY_STYLE if is_daily else DEFAULT_STYLE
+        return render_hint(hint, style)
+
     async def _stop_game(
         self, session_id: str, timed_out: bool = False
-    ) -> tuple[Wordle | None, str]:
+    ) -> tuple[Wordle | Absurdle | None, str]:
         """安全终止指定会话的游戏，同步注销其关联的全局超时计时任务"""
         if session_id not in self._games:
             return None, ""
@@ -372,7 +523,13 @@ class WordlePlugin(Star):
             if timed_out
             else "游戏已结束。"
         )
-        if game.guessed_words:
+        if isinstance(game, Absurdle):
+            if game.guessed_words:
+                msg += f"\n已猜 {len(game.guessed_words)} 次 · 剩余可能答案 {len(game.candidates)}"
+                if game.candidates:
+                    example = random.choice(list(game.candidates))
+                    msg += f"\n（其中一个可能答案：{example} · {meaning_of(example) or '(?)'}）"
+        elif game.guessed_words:
             msg += f"\n{game.result}"
 
         return game, msg

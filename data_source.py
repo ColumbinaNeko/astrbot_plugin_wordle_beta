@@ -131,6 +131,40 @@ def save_png(img: Image.Image) -> BytesIO:
     return output
 
 
+def words_of_length(
+    dic_name: str | None = None, word_length: int = 5
+) -> list[str]:
+    """Absurdle 候选词池：合并全部词典（或仅指定词典）中该长度的单词，按小写去重。"""
+    with _get_conn() as conn:
+        if dic_name is None:
+            rows = conn.execute(
+                "SELECT DISTINCT LOWER(word) FROM words WHERE length=? "
+                "UNION SELECT DISTINCT LOWER(word) FROM custom_words WHERE length=?",
+                (word_length, word_length),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT DISTINCT LOWER(word) FROM words WHERE dict_name=? AND length=? "
+                "UNION SELECT DISTINCT LOWER(word) FROM custom_words WHERE dict_name=? AND length=?",
+                (dic_name, word_length, dic_name, word_length),
+            ).fetchall()
+    return sorted(r[0] for r in rows)
+
+
+def meaning_of(word: str) -> str:
+    """跨表取第一个非空释义，供 Absurdle 获胜/结束揭晓。"""
+    with _get_conn() as conn:
+        for table in ("words", "custom_words"):
+            row = conn.execute(
+                f"SELECT meaning FROM {table} WHERE LOWER(word)=? "
+                "AND meaning IS NOT NULL AND meaning!='' LIMIT 1",
+                (word.lower(),),
+            ).fetchone()
+            if row:
+                return row["meaning"]
+    return ""
+
+
 def random_word_all(min_len: int = 3, max_len: int = 8) -> tuple[str, str]:
     """从所有词典中随机选取一个长度在 [min_len, max_len] 区间的单词。
 
