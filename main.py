@@ -407,11 +407,11 @@ class WordlePlugin(Star):
         )
         if is_absurdle:
             yield event.chain_result(
-                [image_comp, Comp.Plain("🔎 公共字母：所有候选在这些位置上的字母唯一")]
+                [image_comp, Comp.Plain("🔎 公共字母提示")]
             )
         elif hint_forced:
             yield event.chain_result(
-                [image_comp, Comp.Plain("🤝 半程援助：随机亮出了一个正确字母，加油！")]
+                [image_comp, Comp.Plain("🤝 半程援助，加油！")]
             )
         else:
             yield event.chain_result([image_comp])

@@ -140,8 +140,9 @@ class Absurdle:
     def _pick_bucket(self, buckets: dict[tuple[int, ...], list[str]]) -> list[str]:
         """按难度选桶；pattern 字典序 0(绿)<1(黄)<2(灰)。"""
         if self.difficulty == "easy":
-            # 最小桶收束最快；平手选绿更多
-            return min(buckets.items(), key=lambda kv: (len(kv[1]), kv[0]))[1]
+            # 中位桶：收束较快但有过程，避免大词池下最小桶导致秒赢
+            items = sorted(buckets.items(), key=lambda kv: (len(kv[1]), kv[0]))
+            return items[len(items) // 2][1]
         if self.difficulty == "hard":
             # 最大桶；平手选灰更多
             return max(buckets.items(), key=lambda kv: (len(kv[1]), kv[0]))[1]
